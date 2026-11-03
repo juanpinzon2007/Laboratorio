@@ -1,4 +1,5 @@
 package biblioteca;
+
 public interface EstadoReserva {
     String nombre();
     void confirmar(Reserva reserva);

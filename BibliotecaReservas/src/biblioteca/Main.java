@@ -2,32 +2,44 @@ package biblioteca;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-        RepositorioSalas salas = new RepositorioSalasMemoria();
-        RepositorioReservas reservas = new RepositorioReservasMemoria();
+        System.out.println("=== PRUEBAS ESTACIÓN 7: PATRÓN STATE ===");
         
-        List<ObservadorReserva> observadores = List.of(
-            new NotificadorEstudiante(),
-            new RegistroEventos()
-        );
+        Estudiante est = new Estudiante("E999", "Prueba State");
+        Sala sala = new Sala("S1", "Sala Pruebas", 5);
 
-        ReservaFacade fachada = new ReservaFacade(salas, reservas, observadores);
+        System.out.println("\n--- 1 y 2. Confirmar pendiente y Cancelar confirmada ---");
+        Reserva r1 = new ReservaBuilder().estudiante(est).fecha(LocalDate.now().plusDays(1))
+            .horaInicio(LocalTime.of(10, 0)).duracionHoras(1).cantidadPersonas(2).sala(sala).build();
+        
+        System.out.println("Estado inicial: " + r1.getNombreEstado());
+        r1.confirmar();
+        System.out.println("Después de confirmar: " + r1.getNombreEstado());
+        r1.cancelar();
+        System.out.println("Después de cancelar: " + r1.getNombreEstado());
 
-        System.out.println("=== PRUEBA ESTACIÓN 6: PATRÓN OBSERVER ===");
-        System.out.println("--- 1. Creando reserva (pasa a Confirmada automáticamente) ---");
-        Reserva reserva = fachada.realizarReserva(
-            new Estudiante("E001", "Laura"),
-            LocalDate.now().plusDays(7),
-            LocalTime.of(14, 0),
-            2,
-            4,
-            new SeleccionPorCapacidad()
-        ).orElseThrow();
+        System.out.println("\n--- 3. Intentar confirmar una cancelada ---");
+        try {
+            r1.confirmar();
+        } catch (IllegalStateException e) {
+            System.out.println("Error capturado: " + e.getMessage());
+        }
 
-        System.out.println("\n--- 2. Cancelando la reserva (pasa a Cancelada) ---");
-        reserva.cancelar();
+        System.out.println("\n--- 4. Finalizar otra reserva confirmada ---");
+        Reserva r2 = new ReservaBuilder().estudiante(est).fecha(LocalDate.now().plusDays(2))
+            .horaInicio(LocalTime.of(11, 0)).duracionHoras(1).cantidadPersonas(2).sala(sala).build();
+        r2.confirmar();
+        System.out.println("Estado antes de finalizar: " + r2.getNombreEstado());
+        r2.finalizar();
+        System.out.println("Después de finalizar: " + r2.getNombreEstado());
+
+        System.out.println("\n--- 5. Intentar cancelar una finalizada ---");
+        try {
+            r2.cancelar();
+        } catch (IllegalStateException e) {
+            System.out.println("Error capturado: " + e.getMessage());
+        }
     }
 }
