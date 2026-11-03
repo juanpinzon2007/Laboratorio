@@ -2,44 +2,74 @@ package biblioteca;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("=== PRUEBAS ESTACIÓN 7: PATRÓN STATE ===");
-        
-        Estudiante est = new Estudiante("E999", "Prueba State");
-        Sala sala = new Sala("S1", "Sala Pruebas", 5);
+        RepositorioSalas salas = new RepositorioSalasMemoria();
+        RepositorioReservasMemoria reservas = new RepositorioReservasMemoria();
 
-        System.out.println("\n--- 1 y 2. Confirmar pendiente y Cancelar confirmada ---");
-        Reserva r1 = new ReservaBuilder().estudiante(est).fecha(LocalDate.now().plusDays(1))
-            .horaInicio(LocalTime.of(10, 0)).duracionHoras(1).cantidadPersonas(2).sala(sala).build();
-        
-        System.out.println("Estado inicial: " + r1.getNombreEstado());
-        r1.confirmar();
-        System.out.println("Después de confirmar: " + r1.getNombreEstado());
-        r1.cancelar();
-        System.out.println("Después de cancelar: " + r1.getNombreEstado());
+        List<ObservadorReserva> observadores = List.of(
+            new NotificadorEstudiante(),
+            new RegistroEventos()
+        );
 
-        System.out.println("\n--- 3. Intentar confirmar una cancelada ---");
+        ReservaFacade fachada = new ReservaFacade(salas, reservas, observadores);
+
+        Estudiante laura = new Estudiante("E001", "Laura");
+
+        System.out.println("=== ESCENARIO PRINCIPAL ===");
+        Reserva reserva = fachada.realizarReserva(
+            laura,
+            LocalDate.now().plusDays(7),
+            LocalTime.of(14, 0),
+            2,
+            4,
+            new SeleccionPorCapacidad()
+        ).orElseThrow();
+
+        System.out.println(reserva);
+        System.out.println("\nLaura cancela la reserva:");
+        reserva.cancelar();
+        System.out.println(reserva);
+
+        System.out.println("\nIntento inválido: confirmar una reserva cancelada.");
         try {
-            r1.confirmar();
-        } catch (IllegalStateException e) {
-            System.out.println("Error capturado: " + e.getMessage());
+            reserva.confirmar();
+        } catch (IllegalStateException ex) {
+            System.out.println("Operación rechazada: " + ex.getMessage());
         }
 
-        System.out.println("\n--- 4. Finalizar otra reserva confirmada ---");
-        Reserva r2 = new ReservaBuilder().estudiante(est).fecha(LocalDate.now().plusDays(2))
-            .horaInicio(LocalTime.of(11, 0)).duracionHoras(1).cantidadPersonas(2).sala(sala).build();
-        r2.confirmar();
-        System.out.println("Estado antes de finalizar: " + r2.getNombreEstado());
-        r2.finalizar();
-        System.out.println("Después de finalizar: " + r2.getNombreEstado());
+        System.out.println("\n=== PRUEBA DE SALA PREFERIDA ===");
+        fachada.realizarReserva(
+            new Estudiante("E002", "Andrés"),
+            LocalDate.now().plusDays(8),
+            LocalTime.of(10, 0),
+            2,
+            4,
+            new SeleccionSalaPreferida("C")
+        ).ifPresent(System.out::println);
 
-        System.out.println("\n--- 5. Intentar cancelar una finalizada ---");
-        try {
-            r2.cancelar();
-        } catch (IllegalStateException e) {
-            System.out.println("Error capturado: " + e.getMessage());
-        }
+        System.out.println("\n=== PRUEBA SIN SALA ADECUADA ===");
+        fachada.realizarReserva(
+            new Estudiante("E003", "Camila"),
+            LocalDate.now().plusDays(9),
+            LocalTime.of(9, 0),
+            2,
+            10,
+            new SeleccionPorCapacidad()
+        );
+
+        System.out.println("\n=== PRUEBA DE FINALIZACIÓN ===");
+        Reserva otra = fachada.realizarReserva(
+            new Estudiante("E004", "Samuel"),
+            LocalDate.now().plusDays(10),
+            LocalTime.of(11, 0),
+            1,
+            2,
+            new SeleccionPorCapacidad()
+        ).orElseThrow();
+        otra.finalizar();
+        System.out.println(otra);
     }
 }
